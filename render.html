@@ -33,43 +33,43 @@
   <body>
     <h1>SSP UC box drawing</h1>
     
-    <section id="editor">
+    <!-- <section id="editor"> -->
 
 <textarea id="yaml">
 ---
 boxes:
-  - name: Pi_cred Issuer
+  - name: Pi cred Issuer
     session: [mainSession]
     parties:
       - honest issuer
     methods:
       - name: issueCred
         party: issuer
-        caller-session: [mainSession]
-  - name: Pi_cred Receiver
+        caller-session: []
+  - name: Pi cred Receiver
     session: [mainSession]
     parties:
       - honest receiver
     methods:
       - name: receiveCred
         party: receiver
-        caller-session: [mainSession]
+        caller-session: []
   - name: Communication Channel
     session: [mainSession, comms1]
     parties:
       - honest issuer
-      - corrupted issuer
+      - corrupt issuer
       - honest receiver
-      - corrupted receiver
+      - corrupt receiver
     methods:
       - name: send
         party: issuer
-        caller-session: [mainSession, comms1]
+        caller-session: [mainSession]
   - name: Adversary
     session: [mainSession]
     parties:
-      - corrupted issuer
-      - corrupted receiver
+      - corrupt issuer
+      - corrupt receiver
   - name: ROM
     session: [globalROMsession1]
     parties: []
@@ -78,19 +78,15 @@ boxes:
         party: "*"
         caller-session: ["*"]
 </textarea>
-<div id="output"></div>
-    <div>
-      <button onclick="compile();" name="UpdateBtn">
-        Compile
-      </button><br>
-      
-      
-      <button onclick="update();" name="UpdateBtn2">
+    <button onclick="compile();" name="UpdateBtn">
+    Compile
+    </button><br>
+    <div id="output"></div>
+    <button onclick="update();" name="UpdateBtn2">
         Update Tikz
-      </button>
-    </div><br>
+    </button><br>
     <textarea id="code"></textarea><br>
-    </section>
+    <!-- </section> -->
 
     <footer><hr/>
       <p>
