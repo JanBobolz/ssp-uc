@@ -7,8 +7,32 @@ function annotateModel(model) {
         name: "Env", 
         session: [], 
         parties: "*", 
-        methods: []
+        methods: [
+            {name: "main", party: false, 'caller-session': [], async: true},
+            {name: "handle", party: "A", 'caller-session': ["*"], async: true}
+        ]
     });
+
+    //Add implicit default values.
+    for (box of model['boxes']) {
+        if (!('methods' in box))
+            box['methods'] = [];
+        
+        for (method of box['methods']) {
+            //Add caller-session to method if missing, default to box's session minus the last bit
+            if (!('caller-session' in method)) {
+                if (box['session'].length == 0) {
+                    log("Box "+box.name+" needs a non-empty session");
+                    return false;
+                }
+                method['caller-session'] = box['session'].slice(0,-1);
+            }
+
+            //Default async flag: false.
+            method['async'] = 'async' in method ? true : false;
+        }
+
+    }
 
     //Annotate with the unique caller of each method
 
@@ -41,7 +65,7 @@ function annotatedModelToTikz(model) {
 
 function compile() {
     //Parse yaml
-    model = jsyaml.load(document.getElementById("yaml").textContent);
+    model = jsyaml.load(document.getElementById("yaml").value);
     console.log(model);
     
     //Annotate model
@@ -62,7 +86,7 @@ function compile() {
 function update() {
   const s = document.createElement('script');
   s.setAttribute('type','text/tikz');
-  s.textContent = `
+  s.value = `
 \\newcommand{\\mathbb}[1]{\\mathbf{#1}} %workaround for mathbb
 \\renewcommand{\\times}{~\\mathsf{x}~}
 \\begin{tikzpicture}
@@ -76,53 +100,4 @@ ${code_input.value}
 
 let debounce_update = null;
 let debounce_do = false;
-
-// update();
-// window.updateTikz = update;
-
-// window.onload = async function () {
-//     await load();
-  
-//     async function process(elt) {
-//       var text = elt.childNodes[0].nodeValue;
-//       var div = document.createElement('div');
-//       let dvi = await tex(text);
-//       let html = "";
-//       const page = new stream__WEBPACK_IMPORTED_MODULE_1__["Writable"]({
-//         write(chunk, encoding, callback) {
-//           html = html + chunk.toString();
-//           callback();
-//         }
-  
-//       });
-  
-//       async function* streamBuffer() {
-//         yield Buffer.from(dvi);
-//         return;
-//       }
-  
-//       let machine = await Object(dvi2html__WEBPACK_IMPORTED_MODULE_0__["dvi2html"])(streamBuffer(), page);
-//       div.style.display = 'flex';
-//       div.style.width = machine.paperwidth.toString() + "pt";
-//       div.style.height = machine.paperheight.toString() + "pt";
-//       div.style['align-items'] = 'center';
-//       div.style['justify-content'] = 'center';
-//       div.innerHTML = html;
-//       let svg = div.getElementsByTagName('svg');
-//       svg[0].setAttribute("width", machine.paperwidth.toString() + "pt");
-//       svg[0].setAttribute("height", machine.paperheight.toString() + "pt");
-//       svg[0].setAttribute("viewBox", `-72 -72 ${machine.paperwidth} ${machine.paperheight}`);
-//       elt.parentNode.replaceChild(div, elt);
-//     }
-    
-//     window.process_tikz = process;
-  
-//     ;
-//     var scripts = document.getElementsByTagName('script');
-//     var tikzScripts = Array.prototype.slice.call(scripts).filter(e => e.getAttribute('type') === 'text/tikz');
-//     tikzScripts.reduce(async (promise, element) => {
-//       await promise;
-//       return process(element);
-//     }, Promise.resolve());
-//   };
   
