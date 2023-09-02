@@ -1,0 +1,41 @@
+---
+boxes:
+  - name: Pi_cred Issuer
+    session: [mainSession]
+    parties:
+      - honest issuer
+    methods:
+      - name: issueCred
+        party: issuer
+        caller-session: [mainSession]
+  - name: Pi_cred Receiver
+    session: [mainSession]
+    parties:
+      - honest receiver
+    methods:
+      - name: receiveCred
+        party: receiver
+        caller-session: [mainSession]
+  - name: Communication Channel
+    session: [mainSession, comms1]
+    parties:
+      - honest issuer
+      - corrupted issuer
+      - honest receiver
+      - corrupted receiver
+    methods:
+      - name: send
+        party: issuer
+        caller-session: [mainSession, comms1]
+  - name: Adversary
+    session: [mainSession]
+    parties:
+      - corrupted issuer
+      - corrupted receiver
+  - name: ROM
+    session: [globalROMsession1]
+    parties: []
+    methods:
+      - name: eval
+        party: "*"
+        caller-session: ["*"]
