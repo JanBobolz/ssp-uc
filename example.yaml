@@ -1,20 +1,21 @@
 ---
 boxes:
-  - name: Pi_cred Issuer
+  - name: Pi cred Issuer
     session: [mainSession]
     parties:
       - honest issuer
     methods:
       - name: issueCred
-        party: issuer
+        caller-parties: [issuer]
         caller-session: []
-  - name: Pi_cred Receiver
+  - name: Pi cred Receiver
     session: [mainSession]
     parties:
       - honest receiver
     methods:
       - name: receiveCred
-        party: receiver
+        caller-parties: 
+          - receiver
         caller-session: []
   - name: Communication Channel
     session: [mainSession, comms1]
@@ -25,17 +26,22 @@ boxes:
       - corrupt receiver
     methods:
       - name: send
-        party: issuer
+        caller-parties: [issuer]
         caller-session: [mainSession]
   - name: Adversary
     session: [mainSession]
     parties:
       - corrupt issuer
       - corrupt receiver
+    methods:
+      - name: handleSend
+        caller-parties: ["*"]
+        caller-session: [mainSession, comms1]
+        async: true
   - name: ROM
     session: [globalROMsession1]
     parties: []
     methods:
       - name: eval
-        party: "*"
+        caller-parties: ["*"]
         caller-session: ["*"]
