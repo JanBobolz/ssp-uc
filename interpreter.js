@@ -432,6 +432,4 @@ ${code_input.value}
   process_tikz(s);
 }
 
-let debounce_update = null;
-let debounce_do = false;
-  
+compile();
