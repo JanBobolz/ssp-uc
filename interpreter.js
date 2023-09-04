@@ -65,6 +65,15 @@ function get_list_of_box_sessions(model) {
     return sessions.sort((a,b) => session_compare(a,b));
 }
 
+function list_of_sessions_to_unique_list(sessions) {
+    var result = [];
+    for (var session of sessions) {
+        if (!result.some(x => session_equals(session, x)))
+            result.push(session);
+    }
+    return result;
+}
+
 function session_to_latex_str(session) {
     return "("+session.map(sessionPart => "\\mathrm{"+sessionPart+"}").join(", ")+")";
 }
@@ -85,26 +94,15 @@ function parties_to_latex_str(parties, force_set = false) {
         return rollout.join(", ");
 }
 
-function method_to_latex_str(method, box, callerSession = false, callerParties = false, printAsync = true) {
+function method_to_latex_str(method, box, callerSession = false, callerParties = false, shadowingBoxes = [], printAsync = true) {
     if (callerSession === false)
         callerSession = method['caller-session'];
     if (callerParties === false)
         callerParties = method['caller-parties'];
-    return String.raw`${method['async'] && printAsync ? "async " : ""} $ ${parties_to_latex_str(callerParties)}.\mathsf{${method['name']}}_{${session_to_latex_str(box['session'])}}^{${session_to_latex_str(callerSession)}}()$`
+    return String.raw`${method['async'] && printAsync ? "async " : ""} $ ${parties_to_latex_str(callerParties)}.\mathsf{${method['name']}}_{${session_to_latex_str(box['session'])}}^{${session_to_latex_str(callerSession)}${shadowingBoxes.length > 0 ? "\\setminus\\{"+list_of_sessions_to_unique_list(shadowingBoxes.map(b => b['session'])).map(s => session_to_latex_str(s.concat(["*"]))).join(", ")+"\\}" : ""}}()$`
 }
 
 function annotateModel(model) {
-    //Add environment box
-    model['boxes'].unshift({
-        name: "Env", 
-        session: [], 
-        parties: ["*"], 
-        methods: [
-            //{name: "main", party: "Experiment", 'caller-session': [], async: true},
-            {name: "handle", party: "A", 'caller-session': ["*"], async: true}
-        ]
-    });
-
     //Add indices to the boxes
     for (var i in model['boxes']) {
         model['boxes'][i]['index'] = i; //env gets 0
@@ -198,6 +196,10 @@ function annotateModel(model) {
                     console.log("No prefix", callerBox['session'], method['caller-session']);
                     continue; //Cannot call method because session prohibits it.
                 }
+
+                //Tidy up shadowingBoxes, remove boxes that are already shadowed by other boxes from the list.
+                shadowingBoxes = shadowingBoxes.filter(box => !shadowingBoxes.some(betterBox => session_is_proper_prefix(betterBox['session'], box['session'])));
+
                 console.log(effectiveCallSession);
                 console.log("Parties", callerBox['parties'], method['caller-parties']);
                 //Collect parties on behalf of which callerBox can call this method.
@@ -217,6 +219,16 @@ function annotateModel(model) {
                     effectiveCallParty[partyName]['honest'] = effectiveCallParty[partyName]['honest'] && method['caller-parties'][partyName]['honest'];
                     effectiveCallParty[partyName]['corrupt'] = effectiveCallParty[partyName]['corrupt'] && method['caller-parties'][partyName]['corrupt'];
                 }
+                if ("*" in method['caller-parties']) { //add privileges afforded by caller-session *.
+                    for (var partyName in callerBox['parties']) {
+                        if (!(partyName in effectiveCallParty)) {
+                            effectiveCallParty[partyName] = {'honest': false, "corrupt": false};
+                        }
+                        effectiveCallParty[partyName]['honest'] = effectiveCallParty[partyName]['honest'] || callerBox['parties'][partyName]['honest'] && method['caller-parties']['*']['honest'];
+                        effectiveCallParty[partyName]['corrupt'] = effectiveCallParty[partyName]['corrupt'] || callerBox['parties'][partyName]['corrupt'] && method['caller-parties']['*']['corrupt'];
+                    }
+                }
+                
                 console.log(effectiveCallParty)
                 //Remove redundant parties when * is involved
                 if ("*" in effectiveCallParty) {
@@ -227,17 +239,22 @@ function annotateModel(model) {
                             effectiveCallParty[partyName]['honest'] = false;
                         if (effectiveCallParty["*"]['corrupt'])
                             effectiveCallParty[partyName]['corrupt'] = false;
-                        if (effectiveCallParty[partyName]['honest'] == false && effectiveCallParty[partyName]['corrupt'] == false)
-                            delete effectiveCallParty[partyName];
                     }
                 }
-                console.log("After normalize", effectiveCallParty);
+                //Tidy up
+                for (var partyName in effectiveCallParty) {
+                    if (!effectiveCallParty[partyName]['honest'] && !effectiveCallParty[partyName]['corrupt'])
+                        delete effectiveCallParty[partyName];
+                }
 
-                if (Object.keys(effectiveCallParty).length === 0)
+                console.log("After normalize", effectiveCallParty);
+                console.log("Object.keys", Object.keys(effectiveCallParty));
+                if (Object.keys(effectiveCallParty).length == 0)
                     continue; //No party can call this method. Skip it.
                 
                 //Save data
                 callerBox['imports'].push({'box': calleeBox, 'method': method, 'effectiveSession': effectiveCallSession, 'effectiveParty': effectiveCallParty, 'shadowingBoxes': shadowingBoxes});
+                console.log("Pushed", {'box': calleeBox, 'method': method, 'effectiveSession': effectiveCallSession, 'effectiveParty': effectiveCallParty, 'shadowingBoxes': shadowingBoxes});
             }
         }
     }
@@ -261,23 +278,25 @@ function getWidth(prefix, model) {
 
 function annotatedModelToTikz(model) {
     //Variables. Global to allow other functions to access them.
-    boxwidth = 7; //excluding margin. In cm.
-    boxmargin = 1; //in cm.
-    verticalLayerDistance = 4; 
+    boxwidth = 'settings' in model && 'boxwidth' in model['settings'] ? model['settings']['boxwidth']: 7; //excluding margin. In cm.
+    boxmargin = 'settings' in model && 'boxmargin' in model['settings'] ? model['settings']['boxmargin']: 1; //In cm.
+    verticalLayerDistance = 'settings' in model && 'layerheight' in model['settings'] ? model['settings']['layerheight']: 6; //In cm.
+    showAllArrows = 'settings' in model && 'showallarrows' in model['settings'] ? model['settings']['showallarrows']: true;
 
     var result = "";
 
     //Draw env
-    result += String.raw`
-            \node (box0) at (0,0) [draw,thick,minimum height=2cm,text width = ${getWidth([], model)}cm,anchor=north west] 
-            {
-                \textbf{Env}\\ 
-                $\mathbf{P} = \mathbb{Z}\times\{honest\}$\\
-                Box session: $()$ \\ 
-                ~ \\ 
-                async $\mathsf{main}()$
-            };
-            `
+    result += drawBox(model['boxes'][0], 0, 0, getWidth([], model));
+    //  String.raw`
+    //         \node (box0) at (0,0) [draw,thick,minimum height=2cm,text width = ${getWidth([], model)}cm,anchor=north west] 
+    //         {
+    //             \textbf{Env}\\ 
+    //             $\mathbf{P} = \mathbb{Z}\times\{honest\}$\\
+    //             Box session: $()$ \\ 
+    //             ~ \\ 
+    //             async $\mathsf{main}()$
+    //         };
+    //         `
     
     //Draw other boxes
     result += drawProperSubsessionBoxes(0, verticalLayerDistance, [], model);
@@ -287,24 +306,64 @@ function annotatedModelToTikz(model) {
         for (var calleeBox of model['boxes']) {
             if (calleeBox == callerBox)
                 continue;
-            
+            if (!showAllArrows && !session_is_prefix(callerBox['session'], calleeBox['session']) && !session_is_prefix(calleeBox['session'], callerBox['session']))
+                continue;
+
             var midway = `lineBox${callerBox['index']}ToBox${calleeBox['index']}`
             var arrowLabel = "";
+            var hasNonGlobalMethods = false;
             for (var importData of callerBox['imports']) {
                 if (importData['box']['index'] != calleeBox['index'])
                     continue;
-                arrowLabel += method_to_latex_str(importData['method'], calleeBox, importData['effectiveSession'], importData['effectiveParty'], printAsync = true);
+                arrowLabel += method_to_latex_str(importData['method'], calleeBox, importData['effectiveSession'], importData['effectiveParty'], importData['shadowingBoxes'], false);
                 arrowLabel += "\\\\";
+                hasNonGlobalMethods = hasNonGlobalMethods || !importData['method']['caller-session'].includes("*");
             }
 
-            if (arrowLabel != "")
+            if (arrowLabel != "" && (hasNonGlobalMethods || showAllArrows))
                 result += String.raw`
                     \draw[->,thick,draw=black!30!white] (box${callerBox['index']}) -- (box${calleeBox['index']}) node [midway] (${midway}) {};
-                    \node[anchor=west, text width=1cm] at (${midway}) {${arrowLabel}};
+                    \node[anchor=west, text width=1cm] at (${midway}) {};
                 `
         }
     }
 
+
+    return result;
+}
+
+function drawBox(box, x, y, width = 0) {
+    if (!width)
+        width = boxwidth;
+
+    var result = 
+    String.raw`
+    \node (box${box['index']}) at (${x.toFixed(4)}cm,${y.toFixed(4)}cm) [draw,thick,minimum height=2cm,text width = ${width}cm, anchor=north west] 
+    {
+        \textbf{${box['name']}}\\
+        $\mathbf{P} = ${parties_to_latex_str(box['parties'], true)}$\\
+        Box session: $${session_to_latex_str(box['session'])}$ \\ 
+        ~ \\`;
+    
+    var indent = "    "
+
+    //Draw exported methods
+    if (box['methods'].length > 0)
+        result += indent+String.raw`\textbf{Exported methods:}\\`+"\n";
+    for (var method of box['methods']) {
+        result += indent+method_to_latex_str(method, box)+"\\\\\n";
+    }
+
+    //Draw imported methods
+    if (box['imports'].length > 0)
+        result += indent+String.raw`\textbf{Imported methods:}\\`+"\n";
+    for (var importData of box['imports']) {
+        result += indent+method_to_latex_str(importData['method'], importData['box'], importData['effectiveSession'], importData['effectiveParty'], importData['shadowingBoxes'], true)+"\\\\\n";
+    }
+
+    result += String.raw`   
+    };
+    `
 
     return result;
 }
@@ -330,23 +389,7 @@ function drawProperSubsessionBoxes(offset_x, offset_y, parentSession, model) {
 
         for (var box of boxes_to_draw) {
             //Draw box
-            result += String.raw`
-            \node (box${box['index']}) at (${(current_box_x+boxmargin/2).toFixed(4)}cm,${offset_y.toFixed(4)}cm) [draw,thick,minimum height=2cm,text width = ${boxwidth}cm, anchor=north west] 
-            {
-                \textbf{${box['name']}}\\
-                $\mathbf{P} = ${parties_to_latex_str(box['parties'], true)}$\\
-                Box session: $${session_to_latex_str(box['session'])}$ \\ 
-                ~ \\ 
-            `;
-            
-            //Draw methods
-            for (var method of box['methods']) {
-                result += method_to_latex_str(method, box)+"\n";
-            }
-
-            result += String.raw`   
-            };
-            `
+            result += drawBox(box, (current_box_x+boxmargin/2), offset_y);
             current_box_x += boxwidth+boxmargin;
         }
         result += drawProperSubsessionBoxes(current_session_x, offset_y+verticalLayerDistance, session_to_draw, model);
