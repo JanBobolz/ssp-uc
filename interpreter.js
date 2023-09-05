@@ -391,14 +391,14 @@ function loadExample(filename) {
     fetch("examples/"+filename)
     .then(response => response.text())
     .then(text => {
-        document.getElementById("yaml").value = text;
+        setYamlEditorContent(text);
         compile();
     });
 }
 
 function compile() {
     //Parse yaml
-    model = jsyaml.load(document.getElementById("yaml").value);
+    model = jsyaml.load(getYamlEditorContent());
     console.log("YAML model", model);
     
     //Annotate model
@@ -431,8 +431,20 @@ ${code_input.value}
 }
 
 document.getElementById("exampleselect").addEventListener("change", (event) => {
-    document.getElementById("yaml").value = "[loading]";
+    setYamlEditorContent("[loading]");
     loadExample(event.target.value);
 });
+
+function setYamlEditorContent(newContent) {
+    editor.dispatch({changes: {
+        from: 0,
+        to: editor.state.doc.length,
+        insert: newContent
+    }});
+}
+
+function getYamlEditorContent() {
+    return editor.state.doc.toString();
+}
 
 loadExample("default.yaml");
