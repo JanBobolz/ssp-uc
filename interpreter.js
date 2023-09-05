@@ -274,18 +274,12 @@ function annotatedModelToTikz(model) {
 
     var result = "";
 
-    //Draw env
-    result += drawBox(model['boxes'][0], 0, 0, getWidth([], model));
-    //  String.raw`
-    //         \node (box0) at (0,0) [draw,thick,minimum height=2cm,text width = ${getWidth([], model)}cm,anchor=north west] 
-    //         {
-    //             \textbf{Env}\\ 
-    //             $\mathbf{P} = \mathbb{Z}\times\{honest\}$\\
-    //             Box session: $()$ \\ 
-    //             ~ \\ 
-    //             async $\mathsf{main}()$
-    //         };
-    //         `
+    //Draw session [] boxes
+    var rootBoxes = model['boxes'].filter(box => session_equals([], box['session'], model));
+    var rootwidth = Math.max(boxwidth, getWidth([], model)/rootBoxes.length - boxmargin);
+    var i = 0;
+    for (var box of rootBoxes)
+        result += drawBox(box, (i++)*(rootwidth+boxmargin)+boxmargin/2, 0, rootwidth);
     
     //Draw other boxes
     result += drawProperSubsessionBoxes(0, verticalLayerDistance, [], model);
