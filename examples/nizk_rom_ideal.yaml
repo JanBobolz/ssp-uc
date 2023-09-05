@@ -1,0 +1,55 @@
+---
+boxes:
+  - name: Env
+    session: []
+    parties: ["*"]
+    methods: 
+      - name: main
+        caller-parties: []
+        caller-session: []
+        async: true
+      - name: handleAdv
+        caller-parties: [corrupt adv]
+        caller-session: [main]
+        async: true
+
+  - name: F-NIZK
+    session: [main]
+    parties:
+      - prover
+      - verifier
+    methods:
+      - name: prove
+        caller-parties: [prover]
+      - name: verify
+        caller-parties: [verifier]
+
+  - name: Adversary (Simulator)
+    session: [main]
+    parties:
+      - adv
+      - prover
+      - verifier
+    methods: 
+      - name: handleEnvCommand
+        caller-parties: ["*"]
+        caller-session: []
+        async: false
+
+
+  - name: Observable global random oracle
+    session: [globalROM]
+    parties: []
+    methods:
+      - name: eval
+        caller-parties: ["*"]
+        caller-session: ["*"]
+      - name: observe
+        caller-parties: ["*"]
+        caller-session: ["*"]
+
+settings:
+  boxwidth: 10
+  boxmargin: 1
+  layerheight: 6
+  showallarrows: false

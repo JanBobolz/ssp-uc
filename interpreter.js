@@ -85,7 +85,7 @@ function parties_to_latex_str(parties, force_set = false) {
         if (party['honest'])
             rollout.push("\\mathrm{"+partyName+"}");
         if (party['corrupt'])
-            rollout.push("\\mathrm{"+partyName+"}^{*}");
+            rollout.push("\\mathrm{"+partyName+"}^{\\mathrm{c}}");
     }
 
     if (force_set || rollout.length != 1)
@@ -377,7 +377,6 @@ function drawProperSubsessionBoxes(offset_x, offset_y, parentSession, model) {
         var current_box_x = current_session_x;
 
         for (var box of boxes_to_draw) {
-            //Draw box
             result += drawBox(box, (current_box_x+boxmargin/2), offset_y);
             current_box_x += boxwidth+boxmargin;
         }
