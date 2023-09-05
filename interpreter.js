@@ -169,7 +169,6 @@ function annotateModel(model) {
         //    so don't normalize away the * anymore. Instead, keep it as special party name.
         // Sessions: Boxes have concrete sessions (no *). Methods can use "*" as placeholder (can be empty), which creates copies of all possible instantiations of *. 
         //    so what methods can box with session s call? First, check that s starts with the method's session before the *. Then, can call method with [s,*], except where it's shadowed. Meaning that from [s,*], we have to exclude all sessions of the form [s,s',*]. We cannot call those. 
-        console.log(callerBox['name']);
         for (var calleeBox of model['boxes']) {
             if (calleeBox == callerBox)
                 continue;
@@ -178,7 +177,6 @@ function annotateModel(model) {
                 var effectiveCallSession; //example format: [s1, s2, *]
                 var shadowingBoxes;
                 if (session_is_prefix_with_star(callerBox['session'], method['caller-session'])) {
-                    console.log("Prefix with star", callerBox['session'], method['caller-session']);
                     //Box session is s. method::caller-session is of form [{substring of s},*]. 
                     //So we can call the method with session [s,*], except where it's shadowed by another box that can make the call for [s',*] with s prefix of s'.
                     effectiveCallSession = callerBox['session'].concat(["*"]);
@@ -189,23 +187,18 @@ function annotateModel(model) {
                         continue; //some shadowingBox shadows our callerBox's call completely. So callerBox cannot call the method at all.
                 } else if (method['caller-session'][method['caller-session'].length-1] != "*" && session_is_longest_prefix(callerBox['session'], method['caller-session'], model)) {
                     //Easy case: method's caller-session specification has no *. So just do longest-prefix rule. No shadowing
-                    console.log("Prefix no star", callerBox['session'], method['caller-session']);
                     shadowingBoxes = [];
                     effectiveCallSession = method['caller-session'];
                 } else {
-                    console.log("No prefix", callerBox['session'], method['caller-session']);
                     continue; //Cannot call method because session prohibits it.
                 }
 
                 //Tidy up shadowingBoxes, remove boxes that are already shadowed by other boxes from the list.
                 shadowingBoxes = shadowingBoxes.filter(box => !shadowingBoxes.some(betterBox => session_is_proper_prefix(betterBox['session'], box['session'])));
 
-                console.log(effectiveCallSession);
-                console.log("Parties", callerBox['parties'], method['caller-parties']);
                 //Collect parties on behalf of which callerBox can call this method.
                 var effectiveCallParty = {}; //will be something like {"P1": {honest: true, corrupt:true}, ...} or {"*" : {honest: true, corrupt: true}, "Foo": {honest: true, corrupt: false}, "bar": {honest: false, corrupt: true}}
                 for (var partyName in method['caller-parties']) {
-                    console.log("Compare", partyName, callerBox['parties']);
                     effectiveCallParty[partyName] = {'honest': false, "corrupt": false};
                     if (partyName in callerBox['parties']) { //if caller has this exact party, apply that party's privileges.
                         effectiveCallParty[partyName]['honest'] = callerBox['parties'][partyName]['honest'];
@@ -229,7 +222,6 @@ function annotateModel(model) {
                     }
                 }
                 
-                console.log(effectiveCallParty)
                 //Remove redundant parties when * is involved
                 if ("*" in effectiveCallParty) {
                     for (var partyName in effectiveCallParty) {
@@ -247,14 +239,11 @@ function annotateModel(model) {
                         delete effectiveCallParty[partyName];
                 }
 
-                console.log("After normalize", effectiveCallParty);
-                console.log("Object.keys", Object.keys(effectiveCallParty));
                 if (Object.keys(effectiveCallParty).length == 0)
                     continue; //No party can call this method. Skip it.
                 
                 //Save data
                 callerBox['imports'].push({'box': calleeBox, 'method': method, 'effectiveSession': effectiveCallSession, 'effectiveParty': effectiveCallParty, 'shadowingBoxes': shadowingBoxes});
-                console.log("Pushed", {'box': calleeBox, 'method': method, 'effectiveSession': effectiveCallSession, 'effectiveParty': effectiveCallParty, 'shadowingBoxes': shadowingBoxes});
             }
         }
     }
@@ -410,11 +399,11 @@ function loadExample(filename) {
 function compile() {
     //Parse yaml
     model = jsyaml.load(document.getElementById("yaml").value);
-    console.log(model);
+    console.log("YAML model", model);
     
     //Annotate model
     var annotatedModel = annotateModel(model);
-    console.log(annotatedModel);
+    console.log("Augmented model", annotatedModel);
 
     //Compile model to tikz (or handle error)
     if (annotatedModel){
