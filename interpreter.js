@@ -398,6 +398,15 @@ function drawProperSubsessionBoxes(offset_x, offset_y, parentSession, model) {
     return result;
 }
 
+function loadExample(filename) {
+    fetch("examples/"+filename)
+    .then(response => response.text())
+    .then(text => {
+        document.getElementById("yaml").value = text;
+        compile();
+    });
+}
+
 function compile() {
     //Parse yaml
     model = jsyaml.load(document.getElementById("yaml").value);
@@ -432,4 +441,9 @@ ${code_input.value}
   process_tikz(s);
 }
 
-compile();
+document.getElementById("exampleselect").addEventListener("change", (event) => {
+    document.getElementById("yaml").value = "[loading]";
+    loadExample(event.target.value);
+});
+
+loadExample("default.yaml");
