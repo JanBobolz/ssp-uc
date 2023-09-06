@@ -381,7 +381,7 @@ function drawProperSubsessionBoxes(offset_x, offset_y, parentSession, model) {
 }
 
 function loadExample(filename) {
-    fetch("examples/"+filename)
+    fetch("examples/"+filename, {cache: "no-store"})
     .then(response => response.text())
     .then(text => {
         setYamlEditorContent(text);

@@ -1,3 +1,5 @@
+#Execute this if you change anything in editor.mjs 
+
 npm install rollup --save-dev
 
 #npm i codemirror @codemirror/lang-javascript
