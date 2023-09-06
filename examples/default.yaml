@@ -19,7 +19,7 @@ boxes:
       - honest iss
     methods:
       - name: issueCred
-        caller-parties: [iss]
+        caller-parties: [honest iss]
         caller-session: []
 
   - name: Pi User
@@ -28,8 +28,7 @@ boxes:
       - honest user
     methods:
       - name: receiveCred
-        caller-parties: 
-          - user
+        caller-parties: [honest user]
         caller-session: []
 
   - name: Channel

@@ -19,7 +19,7 @@ boxes:
       - honest prover
     methods:
       - name: prove
-        caller-parties: [prover]
+        caller-parties: [honest prover]
 
   - name: NIZK Verifier
     session: [main]
@@ -27,7 +27,7 @@ boxes:
       - honest verifier
     methods:
       - name: verify
-        caller-parties: [verifier]
+        caller-parties: [honest verifier]
 
   - name: Adversary
     session: [main]

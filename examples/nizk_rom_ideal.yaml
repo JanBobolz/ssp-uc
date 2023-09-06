@@ -39,11 +39,6 @@ boxes:
         caller-parties: [prover, verifier]
         caller-session: [main]
         async: true
-      - name: prove
-        caller-parties: [corrupt prover]
-      - name: verify
-        caller-parties: [corrupt verifier]
-
         
 
   - name: G-ROM

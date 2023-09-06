@@ -381,6 +381,7 @@ function drawProperSubsessionBoxes(offset_x, offset_y, parentSession, model) {
 }
 
 function loadExample(filename) {
+    window.location.hash = "#"+filename;
     fetch("examples/"+filename, {cache: "no-store"})
     .then(response => response.text())
     .then(text => {
@@ -440,4 +441,4 @@ function getYamlEditorContent() {
     return editor.state.doc.toString();
 }
 
-loadExample("default.yaml");
+loadExample(window.location.hash ? window.location.hash.replace("#", "") : "default.yaml");
