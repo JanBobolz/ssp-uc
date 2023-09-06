@@ -25,17 +25,21 @@ boxes:
         caller-parties: [verifier]
 
   - name: Adversary (Simulator)
-    session: []
+    session: [main]
     parties:
-      - corrupt adv
-      - corrupt prover
-      - corrupt verifier
+      - adv
+      - prover
+      - verifier
     methods: 
       - name: handleEnvCommand
         caller-parties: ["*"]
         caller-session: []
         async: false
-
+      - name: handleIdealRequest
+        caller-parties: [prover, verifier]
+        caller-session: [main]
+        async: true
+        
 
   - name: Observable global random oracle
     session: [globalROM]
@@ -49,7 +53,7 @@ boxes:
         caller-session: ["*"]
 
 settings:
-  boxwidth: 10
-  boxmargin: 1
-  layerheight: 6
+  boxwidth: 11
+  boxmargin: 1.4
+  layerheight: 7
   showallarrows: false
