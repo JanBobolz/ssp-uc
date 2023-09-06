@@ -13,7 +13,7 @@ boxes:
         caller-session: [main]
         async: true
 
-  - name: Pi cred Issuer
+  - name: Pi Issuer
     session: [main]
     parties:
       - honest iss
@@ -22,7 +22,7 @@ boxes:
         caller-parties: [iss]
         caller-session: []
 
-  - name: Pi cred User
+  - name: Pi User
     session: [main]
     parties:
       - honest user
@@ -32,7 +32,7 @@ boxes:
           - user
         caller-session: []
 
-  - name: Communication Channel
+  - name: Channel
     session: [main, ch1]
     parties:
       - honest iss
@@ -59,12 +59,12 @@ boxes:
         caller-session: [main, ch1]
         async: true
       - name: handleEnvCommand
-        caller-parties: ["*"]
+        caller-parties: [corrupt adv]
         caller-session: []
         async: false
 
 settings:
-  boxwidth: 8
+  boxwidth: 10
   boxmargin: 1
   layerheight: 6
   showallarrows: false

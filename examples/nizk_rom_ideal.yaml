@@ -20,11 +20,11 @@ boxes:
       - verifier
     methods:
       - name: prove
-        caller-parties: [prover]
+        caller-parties: [honest prover]
       - name: verify
-        caller-parties: [verifier]
+        caller-parties: [honest verifier]
 
-  - name: Adversary (Simulator)
+  - name: Sim
     session: [main]
     parties:
       - adv
@@ -32,17 +32,22 @@ boxes:
       - verifier
     methods: 
       - name: handleEnvCommand
-        caller-parties: ["*"]
+        caller-parties: [corrupt adv]
         caller-session: []
         async: false
       - name: handleIdealRequest
         caller-parties: [prover, verifier]
         caller-session: [main]
         async: true
+      - name: prove
+        caller-parties: [corrupt prover]
+      - name: verify
+        caller-parties: [corrupt verifier]
+
         
 
-  - name: Observable global random oracle
-    session: [globalROM]
+  - name: G-ROM
+    session: [GROM]
     parties: []
     methods:
       - name: eval
@@ -53,7 +58,7 @@ boxes:
         caller-session: ["*"]
 
 settings:
-  boxwidth: 11
+  boxwidth: 12
   boxmargin: 1.4
-  layerheight: 7
+  layerheight: 8
   showallarrows: false

@@ -94,12 +94,12 @@ function parties_to_latex_str(parties, force_set = false) {
         return rollout.join(", ");
 }
 
-function method_to_latex_str(method, box, callerSession = false, callerParties = false, shadowingBoxes = [], printAsync = true) {
+function method_to_latex_str(method, box, callerSession = false, callerParties = false, shadowingBoxes = [], printAsync = true, printCalleeBoxName = false) {
     if (callerSession === false)
         callerSession = method['caller-session'];
     if (callerParties === false)
         callerParties = method['caller-parties'];
-    return String.raw`${method['async'] && printAsync ? "async " : ""} $ ${parties_to_latex_str(callerParties)}.\mathsf{${method['name']}}_{${session_to_latex_str(box['session'])}}^{${session_to_latex_str(callerSession)}${shadowingBoxes.length > 0 ? "\\setminus\\{"+list_of_sessions_to_unique_list(shadowingBoxes.map(b => b['session'])).map(s => session_to_latex_str(s.concat(["*"]))).join(", ")+"\\}" : ""}}()$`
+    return String.raw`${method['async'] && printAsync ? "async " : ""} ${printCalleeBoxName ? box['name']+"::" : ""} $ ${parties_to_latex_str(callerParties)}.\mathsf{${method['name']}}_{${session_to_latex_str(box['session'])}}^{${session_to_latex_str(callerSession)}${shadowingBoxes.length > 0 ? "\\setminus\\{"+list_of_sessions_to_unique_list(shadowingBoxes.map(b => b['session'])).map(s => session_to_latex_str(s.concat(["*"]))).join(", ")+"\\}" : ""}}()$`
 }
 
 function annotateModel(model) {
@@ -341,7 +341,7 @@ function drawBox(box, x, y, width = 0) {
     if (box['imports'].length > 0)
         result += indent+String.raw`\textbf{Imported methods:}\\`+"\n";
     for (var importData of box['imports']) {
-        result += indent+method_to_latex_str(importData['method'], importData['box'], importData['effectiveSession'], importData['effectiveParty'], importData['shadowingBoxes'], true)+"\\\\\n";
+        result += indent+method_to_latex_str(importData['method'], importData['box'], importData['effectiveSession'], importData['effectiveParty'], importData['shadowingBoxes'], true, false)+"{~\\footnotesize $\\rightarrow$ "+importData['box']['name']+"}\\\\\n";
     }
 
     result += String.raw`   

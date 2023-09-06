@@ -37,12 +37,12 @@ boxes:
       - corrupt verifier
     methods: 
       - name: handleEnvCommand
-        caller-parties: ["*"]
+        caller-parties: [corrupt adv]
         caller-session: []
         async: false
 
-  - name: Observable global random oracle
-    session: [globalROM]
+  - name: G-ROM
+    session: [GROM]
     parties: []
     methods:
       - name: eval
@@ -53,7 +53,7 @@ boxes:
         caller-session: ["*"]
 
 settings:
-  boxwidth: 7
+  boxwidth: 8
   boxmargin: 1
   layerheight: 6
   showallarrows: false
