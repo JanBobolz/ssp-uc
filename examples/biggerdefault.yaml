@@ -7,11 +7,7 @@ boxes:
       - name: main
         caller-parties: []
         caller-session: []
-        async: true
-      - name: handleAdv
-        caller-parties: [corrupt adv]
-        caller-session: [main]
-        async: true
+    handlers: [relayToEnv]
 
   - name: Pi Issuer
     session: [main]
@@ -20,7 +16,6 @@ boxes:
     methods:
       - name: issueCred
         caller-parties: [honest iss]
-        caller-session: []
 
   - name: Pi User
     session: [main]
@@ -29,37 +24,32 @@ boxes:
     methods:
       - name: receiveCred
         caller-parties: [honest user]
-        caller-session: []
 
   - name: Channel 1
     session: [main, ch1]
     parties:
-      - honest iss
-      - corrupt iss
-      - honest user
-      - corrupt user
+      - iss
+      - user
     methods:
       - name: send
         caller-parties: ["iss", "user"]
-        caller-session: [main]
       - name: receive
         caller-parties: ["iss", "user"]
-        caller-session: [main]
+    events: 
+      - name: onSend
 
   - name: Channel 2
     session: [main, ch2]
     parties:
-      - honest iss
-      - corrupt iss
-      - honest user
-      - corrupt user
+      - iss
+      - user
     methods:
       - name: send
         caller-parties: ["iss", "user"]
-        caller-session: [main]
       - name: receive
         caller-parties: ["iss", "user"]
-        caller-session: [main]
+    events: 
+      - name: onSend
 
   - name: Adversary
     session: [main]
@@ -68,29 +58,22 @@ boxes:
       - corrupt user
       - corrupt adv
     methods:
-      - name: handleSend
-        caller-parties: ["*"]
-        caller-session: [main, ch1]
-        async: true
-      - name: handleSend
-        caller-parties: ["*"]
-        caller-session: [main, ch2]
-        async: true
       - name: handleEnvCommand
         caller-parties: [corrupt adv]
-        caller-session: []
-        async: false
+    events: 
+      - name: relayToEnv
+    handlers: [onSend]
 
   - name: ROM
-    session: [globalROMsession1]
+    session: [ROM1]
     parties: []
     methods:
       - name: eval
         caller-parties: ["*"]
-        caller-session: ["*"]
+        session: ["*", "ROM1"]
 
 settings:
-  boxwidth: 10
+  boxwidth: 12
   boxmargin: 1
   layerheight: 10
   showallarrows: false

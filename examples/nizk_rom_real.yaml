@@ -7,11 +7,7 @@ boxes:
       - name: main
         caller-parties: []
         caller-session: []
-        async: true
-      - name: handleAdv
-        caller-parties: [corrupt adv]
-        caller-session: [main]
-        async: true
+    handlers: [relayToEnv]
 
   - name: NIZK Prover
     session: [main]
@@ -38,8 +34,6 @@ boxes:
     methods: 
       - name: handleEnvCommand
         caller-parties: [corrupt adv]
-        caller-session: []
-        async: false
 
   - name: G-ROM
     session: [GROM]
@@ -47,10 +41,10 @@ boxes:
     methods:
       - name: eval
         caller-parties: ["*"]
-        caller-session: ["*"]
+        session: ["*", "GROM"]
       - name: observe
         caller-parties: ["*"]
-        caller-session: ["*"]
+        session: ["*", "GROM"]
 
 settings:
   boxwidth: 8

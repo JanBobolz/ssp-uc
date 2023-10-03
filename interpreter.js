@@ -1,6 +1,8 @@
 const code_input = document.getElementById('code');
 const output = document.getElementById('output');
 
+// ********** Utility Functions **********
+
 function session_equals(sess1, sess2) {
     return session_is_prefix(sess1, sess2) && session_is_prefix(sess2, sess1);
 }
@@ -48,10 +50,13 @@ function session_is_longest_prefix(longestPrefix, session, model) { //session = 
 }
 
 function session_is_longest_proper_prefix(longestPrefix, session, model) { //session = (longestPrefix, ...)
-    if (!session_is_proper_prefix(longestPrefix, session))
+    if (session.length == 0)
         return false;
-    //Return true iff there's no box with longer proper prefix in model.
-    return !model['boxes'].some(box => box['session'].length > longestPrefix.length && session_is_proper_prefix(box['session'], session));
+    return session_is_longest_prefix(longestPrefix, session.slice(0,session.length-1), model);
+    // if (!session_is_proper_prefix(longestPrefix, session))
+    //     return false;
+    // //Return true iff there's no box with longer proper prefix in model.
+    // return !model['boxes'].some(box => box['session'].length > longestPrefix.length && session_is_proper_prefix(box['session'], session));
 }
 
 function get_list_of_box_sessions(model) {
@@ -99,8 +104,16 @@ function method_to_latex_str(method, box, callerSession = false, callerParties =
         callerSession = method['caller-session'];
     if (callerParties === false)
         callerParties = method['caller-parties'];
-    return String.raw`${method['async'] && printAsync ? "async " : ""} ${printCalleeBoxName ? box['name']+"::" : ""} $ ${parties_to_latex_str(callerParties)}.\mathsf{${method['name']}}_{${session_to_latex_str(box['session'])}}^{${session_to_latex_str(callerSession)}${shadowingBoxes.length > 0 ? "\\setminus\\{"+list_of_sessions_to_unique_list(shadowingBoxes.map(b => b['session'])).map(s => session_to_latex_str(s.concat(["*"]))).join(", ")+"\\}" : ""}}()$`
+    var lastMethodSessionPart = method['session'].length == 0 ? [] : method['session'].slice(method['session'].length-1); //TODO is this conditional okay? Or does it stray too far from the rules?
+    
+    return String.raw`${method['async'] && printAsync ? "async " : ""} ${printCalleeBoxName ? box['name']+"::" : ""} $ ${parties_to_latex_str(callerParties)}.\mathsf{${method['name']}}_{${session_to_latex_str(callerSession.concat(lastMethodSessionPart))}${shadowingBoxes.length > 0 ? "\\setminus\\{"+list_of_sessions_to_unique_list(shadowingBoxes.map(b => b['session'])).map(s => session_to_latex_str(s.concat(["*"]).concat(lastMethodSessionPart))).join(", ")+"\\}" : ""}}$`
 }
+
+function event_to_latex_str(event) {
+    return String.raw`$\mathsf{${event['name']}}_{${session_to_latex_str(event['session'])}}$`
+}
+
+// ********** Model logic **********
 
 function annotateModel(model) {
     //Add indices to the boxes
@@ -114,15 +127,24 @@ function annotateModel(model) {
             box['methods'] = [];
         if (!('parties' in box))
             box['parties'] = [];
-        
+        if (!('events' in box))
+            box['events'] = [];
+        if (!('handlers' in box))
+            box['handlers'] = [];
+
         for (var method of box['methods']) {
-            //Add caller-session to method if missing, default to box's session minus the last bit
+            //Add default session to method if missing, default to box's session
+            if (!('session' in method)) {
+                method['session'] = box['session'];
+            }
+            
+            //Add caller-session to method if missing, default to box's session minus the last part
             if (!('caller-session' in method)) {
-                if (box['session'].length == 0) {
-                    log("Box "+box.name+" needs a non-empty session");
+                if (method['session'].length == 0) {
+                    log("Method "+method.name+" needs a non-empty session");
                     return false;
                 }
-                method['caller-session'] = box['session'].slice(0,-1);
+                method['caller-session'] = method['session'].slice(0,-1);
             }
 
             //Default no parties
@@ -132,6 +154,12 @@ function annotateModel(model) {
 
             //Default async flag: false.
             method['async'] = 'async' in method && method['async'] != "false" ? true : false;
+        }
+
+        for (var event of box['events']) {
+            if (!('session' in event)) {
+                event['session'] = box['session'];
+            }
         }
     }
 
@@ -161,7 +189,25 @@ function annotateModel(model) {
         }
     }
 
-    //Annotate each method with its caller boxes (unique in theory, but here, one "method" may have * qualifiers)
+    //Annotate each box with its handled events
+    for (var eventHandlingBox of model['boxes']) {
+        eventHandlingBox['handledEvents'] = []
+        for (var eventRaisingBox of model['boxes']) {
+            for (var event of eventRaisingBox['events']) {
+                if (eventHandlingBox['handlers'].includes(event['name']) 
+                    && session_is_prefix(eventHandlingBox['session'], event['session']) 
+                    // && !model['boxes'].some(
+                    //     betterBox => betterBox['handlers'].includes(event['name']) && session_is_prefix(betterBox['session'], event['session']) && betterBox['session'].length > eventHandlingBox['session'].length
+                    //     )
+                ) {
+                    eventHandlingBox['handledEvents'].push({ 'name': event['name'], 'session': event['session'] });
+                    event['handler'] = eventHandlingBox;
+                }
+            }
+        }
+    }
+
+    //Annotate each box with its imports
     for (var callerBox of model['boxes']) {
         callerBox['imports'] = [];
 
@@ -251,6 +297,10 @@ function annotateModel(model) {
     window.model = model;
     return model;
 }
+
+
+// ********** Layouting / generating tikz code **********
+
 
 // Computes the width (in cm) we reserve on the canvas for the given session prefix.
 function getWidth(prefix, model) {
@@ -344,6 +394,20 @@ function drawBox(box, x, y, width = 0) {
         result += indent+method_to_latex_str(importData['method'], importData['box'], importData['effectiveSession'], importData['effectiveParty'], importData['shadowingBoxes'], true, false)+"{~\\footnotesize $\\rightarrow$ "+importData['box']['name']+"}\\\\\n";
     }
 
+    //Draw thrown events
+    if (box['events'].length > 0)
+        result += indent+String.raw`\textbf{Caused events:}\\`+"\n";
+    for (var event of box['events']) {
+        result += indent+event_to_latex_str(event)+('handler' in event ? "{~\\footnotesize $\\rightarrow$ "+event['handler']['name']+"}" : "")+"\\\\\n";
+    }
+
+    //Draw handled events
+    if (box['handledEvents'].length > 0)
+        result += indent+String.raw`\textbf{Handled events:}\\`+"\n";
+    for (var event of box['handledEvents']) {
+        result += indent+event_to_latex_str(event)+"\\\\\n";
+    }
+
     result += String.raw`   
     };
     `
@@ -380,8 +444,12 @@ function drawProperSubsessionBoxes(offset_x, offset_y, parentSession, model) {
     return result;
 }
 
+// ********** Website functionality **********
+
 function loadExample(filename) {
     window.location.hash = "#"+filename;
+    if (document.getElementById("exampleselect").value != filename)
+        document.getElementById("exampleselect").value = filename;
     fetch("examples/"+filename, {cache: "no-store"})
     .then(response => response.text())
     .then(text => {
