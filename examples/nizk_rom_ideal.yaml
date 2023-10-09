@@ -5,8 +5,7 @@ boxes:
     parties: ["*"]
     methods: 
       - name: main
-        caller-parties: []
-        caller-session: []
+        parties: []
     handlers: [relayToEnv]
 
   - name: F-NIZK
@@ -16,9 +15,9 @@ boxes:
       - verifier
     methods:
       - name: prove
-        caller-parties: [honest prover]
+        parties: [honest prover]
       - name: verify
-        caller-parties: [honest verifier]
+        parties: [honest verifier]
     events:
       - name: onProve
       - name: onVerify
@@ -31,7 +30,9 @@ boxes:
       - verifier
     methods: 
       - name: handleEnvCommand
-        caller-parties: [corrupt adv]
+        parties: [corrupt adv]
+    events: 
+      - name: relayToEnv
     handlers:
       - onProve
       - onVerify
@@ -42,10 +43,10 @@ boxes:
     parties: []
     methods:
       - name: eval
-        caller-parties: ["*"]
+        parties: ["*"]
         session: ["*", "GROM"]
       - name: observe
-        caller-parties: ["*"]
+        parties: ["*"]
         session: ["*", "GROM"]
 
 settings:

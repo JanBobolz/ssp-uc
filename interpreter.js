@@ -103,7 +103,7 @@ function method_to_latex_str(method, box, callerSession = false, callerParties =
     if (callerSession === false)
         callerSession = method['caller-session'];
     if (callerParties === false)
-        callerParties = method['caller-parties'];
+        callerParties = method['parties'];
     var lastMethodSessionPart = method['session'].length == 0 ? [] : method['session'].slice(method['session'].length-1); //TODO is this conditional okay? Or does it stray too far from the rules?
     
     return String.raw`${method['async'] && printAsync ? "async " : ""} ${printCalleeBoxName ? box['name']+"::" : ""} $ ${parties_to_latex_str(callerParties)}.\mathsf{${method['name']}}_{${session_to_latex_str(callerSession.concat(lastMethodSessionPart))}${shadowingBoxes.length > 0 ? "\\setminus\\{"+list_of_sessions_to_unique_list(shadowingBoxes.map(b => b['session'])).map(s => session_to_latex_str(s.concat(["*"]).concat(lastMethodSessionPart))).join(", ")+"\\}" : ""}}$`
@@ -141,15 +141,14 @@ function annotateModel(model) {
             //Add caller-session to method if missing, default to box's session minus the last part
             if (!('caller-session' in method)) {
                 if (method['session'].length == 0) {
-                    log("Method "+method.name+" needs a non-empty session");
-                    return false;
+                    method['caller-session'] = [];
                 }
                 method['caller-session'] = method['session'].slice(0,-1);
             }
 
             //Default no parties
-            if (!('caller-parties' in method)) {
-                method['caller-parties'] = [];
+            if (!('parties' in method)) {
+                method['parties'] = [];
             }
 
             //Default async flag: false.
@@ -185,7 +184,7 @@ function annotateModel(model) {
     for (var box of model['boxes']) {
         box['parties'] = partyArrayToNiceDict(box['parties']);
         for (var method of box['methods']) {
-            method['caller-parties'] = partyArrayToNiceDict(method['caller-parties']);
+            method['parties'] = partyArrayToNiceDict(method['parties']);
         }
     }
 
@@ -244,7 +243,7 @@ function annotateModel(model) {
 
                 //Collect parties on behalf of which callerBox can call this method.
                 var effectiveCallParty = {}; //will be something like {"P1": {honest: true, corrupt:true}, ...} or {"*" : {honest: true, corrupt: true}, "Foo": {honest: true, corrupt: false}, "bar": {honest: false, corrupt: true}}
-                for (var partyName in method['caller-parties']) {
+                for (var partyName in method['parties']) {
                     effectiveCallParty[partyName] = {'honest': false, "corrupt": false};
                     if (partyName in callerBox['parties']) { //if caller has this exact party, apply that party's privileges.
                         effectiveCallParty[partyName]['honest'] = callerBox['parties'][partyName]['honest'];
@@ -255,16 +254,16 @@ function annotateModel(model) {
                         effectiveCallParty[partyName]['corrupt'] = effectiveCallParty[partyName]['corrupt'] || callerBox['parties']['*']['corrupt'];
                     }
                     //Make sure we're not calling methods for parties for which they aren't defined.
-                    effectiveCallParty[partyName]['honest'] = effectiveCallParty[partyName]['honest'] && method['caller-parties'][partyName]['honest'];
-                    effectiveCallParty[partyName]['corrupt'] = effectiveCallParty[partyName]['corrupt'] && method['caller-parties'][partyName]['corrupt'];
+                    effectiveCallParty[partyName]['honest'] = effectiveCallParty[partyName]['honest'] && method['parties'][partyName]['honest'];
+                    effectiveCallParty[partyName]['corrupt'] = effectiveCallParty[partyName]['corrupt'] && method['parties'][partyName]['corrupt'];
                 }
-                if ("*" in method['caller-parties']) { //add privileges afforded by caller-session *.
+                if ("*" in method['parties']) { //add privileges afforded by caller-session *.
                     for (var partyName in callerBox['parties']) {
                         if (!(partyName in effectiveCallParty)) {
                             effectiveCallParty[partyName] = {'honest': false, "corrupt": false};
                         }
-                        effectiveCallParty[partyName]['honest'] = effectiveCallParty[partyName]['honest'] || callerBox['parties'][partyName]['honest'] && method['caller-parties']['*']['honest'];
-                        effectiveCallParty[partyName]['corrupt'] = effectiveCallParty[partyName]['corrupt'] || callerBox['parties'][partyName]['corrupt'] && method['caller-parties']['*']['corrupt'];
+                        effectiveCallParty[partyName]['honest'] = effectiveCallParty[partyName]['honest'] || callerBox['parties'][partyName]['honest'] && method['parties']['*']['honest'];
+                        effectiveCallParty[partyName]['corrupt'] = effectiveCallParty[partyName]['corrupt'] || callerBox['parties'][partyName]['corrupt'] && method['parties']['*']['corrupt'];
                     }
                 }
                 
@@ -358,6 +357,11 @@ function annotatedModelToTikz(model) {
                     \draw[->,thick,draw=black!30!white] (box${callerBox['index']}) -- (box${calleeBox['index']}) node [midway] (${midway}) {};
                     \node[anchor=west, text width=1cm] at (${midway}) {};
                 `
+
+            if (calleeBox['events'].some(event => event['handler'] == callerBox))
+                result += String.raw`
+                \draw[->,dashed,draw=black, transform canvas={xshift = ${arrowLabel != "" ? '.3cm' : '0cm'}}] (box${calleeBox['index']}) to (box${callerBox['index']}) node [midway] (eventLineBox${calleeBox['index']}ToBox${callerBox['index']}) {};
+                ` //TODO layout this nicer somehow. Current xshift makes arrows clip into boxes sometimes.
         }
     }
 
@@ -387,6 +391,16 @@ function drawBox(box, x, y, width = 0) {
         result += indent+method_to_latex_str(method, box)+"\\\\\n";
     }
 
+    //Draw handled events
+    if (box['handledEvents'].length > 0)
+        result += indent+String.raw`\textbf{Handled events:}\\`+"\n";
+    for (var event of box['handledEvents']) {
+        result += indent+event_to_latex_str(event)+"\\\\\n";
+    }
+
+    if (box['methods'].length > 0 || box['handledEvents'].length > 0)
+        result += "~\\\\\n";
+
     //Draw imported methods
     if (box['imports'].length > 0)
         result += indent+String.raw`\textbf{Imported methods:}\\`+"\n";
@@ -396,16 +410,9 @@ function drawBox(box, x, y, width = 0) {
 
     //Draw thrown events
     if (box['events'].length > 0)
-        result += indent+String.raw`\textbf{Caused events:}\\`+"\n";
+        result += indent+String.raw`\textbf{Raised events:}\\`+"\n";
     for (var event of box['events']) {
         result += indent+event_to_latex_str(event)+('handler' in event ? "{~\\footnotesize $\\rightarrow$ "+event['handler']['name']+"}" : "")+"\\\\\n";
-    }
-
-    //Draw handled events
-    if (box['handledEvents'].length > 0)
-        result += indent+String.raw`\textbf{Handled events:}\\`+"\n";
-    for (var event of box['handledEvents']) {
-        result += indent+event_to_latex_str(event)+"\\\\\n";
     }
 
     result += String.raw`   

@@ -5,8 +5,7 @@ boxes:
     parties: ["*"]
     methods: 
       - name: main
-        caller-parties: []
-        caller-session: []
+        parties: []
     handlers: [relayToEnv]
 
   - name: Pi Issuer
@@ -15,7 +14,7 @@ boxes:
       - honest iss
     methods:
       - name: issueCred
-        caller-parties: [honest iss]
+        parties: [honest iss]
 
   - name: Pi User
     session: [main]
@@ -23,7 +22,7 @@ boxes:
       - honest user
     methods:
       - name: receiveCred
-        caller-parties: [honest user]
+        parties: [honest user]
 
   - name: Channel 1
     session: [main, ch1]
@@ -32,9 +31,9 @@ boxes:
       - user
     methods:
       - name: send
-        caller-parties: ["iss", "user"]
+        parties: ["iss", "user"]
       - name: receive
-        caller-parties: ["iss", "user"]
+        parties: ["iss", "user"]
     events: 
       - name: onSend
 
@@ -45,9 +44,9 @@ boxes:
       - user
     methods:
       - name: send
-        caller-parties: ["iss", "user"]
+        parties: ["iss", "user"]
       - name: receive
-        caller-parties: ["iss", "user"]
+        parties: ["iss", "user"]
     events: 
       - name: onSend
 
@@ -59,7 +58,7 @@ boxes:
       - corrupt adv
     methods:
       - name: handleEnvCommand
-        caller-parties: [corrupt adv]
+        parties: [corrupt adv]
     events: 
       - name: relayToEnv
     handlers: [onSend]
@@ -69,7 +68,7 @@ boxes:
     parties: []
     methods:
       - name: eval
-        caller-parties: ["*"]
+        parties: ["*"]
         session: ["*", "ROM1"]
 
 settings:
