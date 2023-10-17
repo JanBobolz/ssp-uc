@@ -6,7 +6,6 @@ boxes:
     methods: 
       - name: main
         parties: []
-    handlers: [relayToEnv]
 
   - name: NIZK Prover
     session: [main]

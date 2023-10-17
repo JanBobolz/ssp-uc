@@ -129,8 +129,6 @@ function annotateModel(model) {
             box['parties'] = [];
         if (!('events' in box))
             box['events'] = [];
-        if (!('handlers' in box))
-            box['handlers'] = [];
 
         for (var method of box['methods']) {
             //Add default session to method if missing, default to box's session
@@ -158,6 +156,9 @@ function annotateModel(model) {
         for (var event of box['events']) {
             if (!('session' in event)) {
                 event['session'] = box['session'];
+            }
+            if (!('handler' in event)) {
+                event['handler'] = model['boxes'][0]['name']; //env handles all events by default
             }
         }
     }
@@ -193,14 +194,9 @@ function annotateModel(model) {
         eventHandlingBox['handledEvents'] = []
         for (var eventRaisingBox of model['boxes']) {
             for (var event of eventRaisingBox['events']) {
-                if (eventHandlingBox['handlers'].includes(event['name']) 
-                    && session_is_prefix(eventHandlingBox['session'], event['session']) 
-                    // && !model['boxes'].some(
-                    //     betterBox => betterBox['handlers'].includes(event['name']) && session_is_prefix(betterBox['session'], event['session']) && betterBox['session'].length > eventHandlingBox['session'].length
-                    //     )
-                ) {
+                if (event['handler'] == eventHandlingBox['name']) {
                     eventHandlingBox['handledEvents'].push({ 'name': event['name'], 'session': event['session'] });
-                    event['handler'] = eventHandlingBox;
+                    event['handler-box'] = eventHandlingBox;
                 }
             }
         }
@@ -358,7 +354,7 @@ function annotatedModelToTikz(model) {
                     \node[anchor=west, text width=1cm] at (${midway}) {};
                 `
 
-            if (calleeBox['events'].some(event => event['handler'] == callerBox))
+            if (calleeBox['events'].some(event => event['handler-box'] == callerBox))
                 result += String.raw`
                 \draw[->,dashed,draw=black, transform canvas={xshift = ${arrowLabel != "" ? '.3cm' : '0cm'}}] (box${calleeBox['index']}) to (box${callerBox['index']}) node [midway] (eventLineBox${calleeBox['index']}ToBox${callerBox['index']}) {};
                 ` //TODO layout this nicer somehow. Current xshift makes arrows clip into boxes sometimes.
@@ -412,7 +408,7 @@ function drawBox(box, x, y, width = 0) {
     if (box['events'].length > 0)
         result += indent+String.raw`\textbf{Raised events:}\\`+"\n";
     for (var event of box['events']) {
-        result += indent+event_to_latex_str(event)+('handler' in event ? "{~\\footnotesize $\\rightarrow$ "+event['handler']['name']+"}" : "")+"\\\\\n";
+        result += indent+event_to_latex_str(event)+('handler-box' in event ? "{~\\footnotesize $\\rightarrow$ "+event['handler-box']['name']+"}" : "")+"\\\\\n";
     }
 
     result += String.raw`   

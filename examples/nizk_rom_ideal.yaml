@@ -6,7 +6,6 @@ boxes:
     methods: 
       - name: main
         parties: []
-    handlers: [relayToEnv]
 
   - name: F-NIZK
     session: [main]
@@ -20,7 +19,9 @@ boxes:
         parties: [honest verifier]
     events:
       - name: onProve
+        handler: Sim
       - name: onVerify
+        handler: Sim
 
   - name: Sim
     session: [main]
@@ -33,10 +34,6 @@ boxes:
         parties: [corrupt adv]
     events: 
       - name: relayToEnv
-    handlers:
-      - onProve
-      - onVerify
-        
 
   - name: G-ROM
     session: [GROM]

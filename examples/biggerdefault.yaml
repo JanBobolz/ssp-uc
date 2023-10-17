@@ -6,7 +6,6 @@ boxes:
     methods: 
       - name: main
         parties: []
-    handlers: [relayToEnv]
 
   - name: Pi Issuer
     session: [main]
@@ -36,6 +35,7 @@ boxes:
         parties: ["iss", "user"]
     events: 
       - name: onSend
+        handler: Adversary
 
   - name: Channel 2
     session: [main, ch2]
@@ -49,6 +49,7 @@ boxes:
         parties: ["iss", "user"]
     events: 
       - name: onSend
+        handler: Adversary
 
   - name: Adversary
     session: [main]
@@ -61,7 +62,6 @@ boxes:
         parties: [corrupt adv]
     events: 
       - name: relayToEnv
-    handlers: [onSend]
 
   - name: ROM
     session: [ROM1]
