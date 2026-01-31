@@ -21861,9 +21861,9 @@ var coredump;
 var code;
 
 async function load() {
-  let tex = await fetch('https://cdn.glitch.com/e99a39a1-859a-4ab0-9155-d63624b74b7e%2Fef253ef29e2f057334f77ead7f06ed8f22607d38.wasm?v=1575969618298');
+  let tex = await fetch('tex.wasm');
   code = await tex.arrayBuffer();
-  let response = await fetch_readablestream__WEBPACK_IMPORTED_MODULE_5___default()('https://cdn.glitch.com/e99a39a1-859a-4ab0-9155-d63624b74b7e%2F7620f557a41f2bf40820e76ba1fd4d89a484859d.gz?v=1575969618041');
+  let response = await fetch_readablestream__WEBPACK_IMPORTED_MODULE_5___default()('core.dump.gz');
   const reader = response.body.getReader();
   const inf = new pako__WEBPACK_IMPORTED_MODULE_3___default.a.Inflate();
 
